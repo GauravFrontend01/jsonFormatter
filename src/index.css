@@ -1,0 +1,118 @@
+/* Dark theme variables */
+:root {
+  --bg: #0b0f14;
+  --panel: #0f1521;
+  --text: #e6edf3;
+  --muted: #8b949e;
+  --accent: #58a6ff;
+  --danger: #ff6b6b;
+  --border: #1f2a3a;
+  --code-bg: #0a0f16;
+}
+
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+.header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+.title { font-size: 18px; font-weight: 600; }
+.subtitle { color: var(--muted); margin-top: 4px; }
+
+.error {
+  margin: 12px 20px 0;
+  padding: 10px 12px;
+  border: 1px solid #3a1f24;
+  background: #1a0f12;
+  color: var(--danger);
+  border-radius: 8px;
+}
+
+.panes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 16px 20px;
+  flex: 1;
+}
+.pane {
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.pane-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+}
+.pane-header.right { justify-content: flex-start; }
+.spacer { flex: 1; }
+
+.editor {
+  width: 100%;
+  min-height: 380px;
+  flex: 1;
+  resize: none;
+  padding: 14px;
+  background: var(--code-bg);
+  color: var(--text);
+  border: none;
+  outline: none;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.output {
+  margin: 0;
+  padding: 14px;
+  background: var(--code-bg);
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.btn {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: #0e1a2a;
+  color: var(--text);
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.btn:hover { border-color: var(--accent); }
+
+.footer {
+  padding: 10px 20px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+}
+
+@media (max-width: 900px) {
+  .panes { grid-template-columns: 1fr; }
+  .editor { min-height: 220px; }
+}

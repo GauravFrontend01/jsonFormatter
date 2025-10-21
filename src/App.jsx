@@ -286,10 +286,6 @@ export default function App() {
 
   return (
     <div className="app">
-      <header className="header">
-        <div className="title">JSON Formatter</div>
-        <div className="subtitle">Auto unstringifies nested JSON in <code>data</code> and formats</div>
-      </header>
 
       {/* Tabs Bar */}
       <div className="tabs">
@@ -357,9 +353,6 @@ export default function App() {
         </div>
       </div>
 
-      <footer className="footer">
-        <span>Dark theme enabled</span>
-      </footer>
     </div>
   );
 }

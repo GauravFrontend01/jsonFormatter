@@ -8,6 +8,8 @@
   --danger: #ff6b6b;
   --border: #1f2a3a;
   --code-bg: #0a0f16;
+  --number: #7ee787;
+  --boolean: #bc8cff;
 }
 
 * { box-sizing: border-box; }
@@ -43,10 +45,11 @@ body {
 
 .panes {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0,1fr) minmax(0,1fr);
   gap: 12px;
   padding: 16px 20px;
   flex: 1;
+  max-width: 100%;
 }
 .pane {
   display: flex;
@@ -55,6 +58,7 @@ body {
   border: 1px solid var(--border);
   border-radius: 10px;
   overflow: hidden;
+  min-width: 0; /* allow grid child to shrink to half */
 }
 .pane-header {
   display: flex;
@@ -80,6 +84,7 @@ body {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   font-size: 14px;
   line-height: 1.5;
+  overflow: auto;
 }
 
 .output {
@@ -92,6 +97,7 @@ body {
   line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-word;
+  overflow: auto;
 }
 
 .btn {
@@ -106,11 +112,25 @@ body {
 }
 .btn:hover { border-color: var(--accent); }
 
-.footer {
-  padding: 10px 20px;
-  border-top: 1px solid var(--border);
-  color: var(--muted);
-}
+.segmented { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; margin-right: 8px; overflow: hidden; }
+.seg { background: #0b1728; color: var(--muted); padding: 6px 10px; border: none; cursor: pointer; font-size: 13px; }
+.seg.active { background: #11243b; color: var(--text); }
+
+.footer { padding: 10px 20px; border-top: 1px solid var(--border); color: var(--muted); }
+
+/* Tree view styles */
+.tree { font-family: inherit; }
+.tree-row { display: flex; align-items: center; gap: 8px; }
+.tree-group { display: block; }
+.tree-header { display: flex; align-items: center; gap: 8px; }
+.tree-toggle { background: transparent; color: var(--muted); border: none; cursor: pointer; font-size: 12px; }
+.tree-key { color: var(--text); }
+.tree-type { color: var(--muted); margin-left: 4px; }
+.tree-children { display: block; margin-top: 4px; }
+.tree-string { color: var(--accent); }
+.tree-number { color: var(--number); }
+.tree-boolean { color: var(--boolean); }
+.tree-null { color: var(--muted); }
 
 @media (max-width: 900px) {
   .panes { grid-template-columns: 1fr; }

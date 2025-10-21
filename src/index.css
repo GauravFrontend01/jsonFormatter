@@ -12,6 +12,11 @@ body { margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI
 .tab-title { font-size: 13px; }
 .tab-close { color: #93c5fd; font-weight: 600; cursor: pointer; }
 
+/* Action buttons in tabs bar */
+.tabs .btn { background: #111827; color: #cbd5e1; border: 1px solid #1f2937; padding: 6px 10px; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.tabs .btn:hover { background: #0b1220; border-color: #334155; }
+.tabs .btn:active { background: #1f2937; }
+
 .panes { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 6px; flex: 1; min-height: 0; }
 .pane { display: flex; flex-direction: column; min-height: 0; border: 1px solid #1f2937; border-radius: 8px; background: #0b1220; }
 .pane-header { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid #1f2937; font-weight: 600; color: #93c5fd; }
@@ -54,7 +59,7 @@ body { margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI
 .tree-null { color: #9ca3af; }
 
 /* Nested finder */
-.nested-list { border-top: 1px solid #1f2937; padding: 6px 10px; display: flex; flex-direction: column; gap: 6px; }
+.nested-list { border-top: 1px solid #1f2937; padding: 6px 10px; display: flex; flex-direction: column; gap: 6px; height: 150px; overflow: auto; }
 .nested-title { color: #9ca3af; font-size: 12px; }
 .nested-item { display: flex; align-items: center; gap: 8px; }
 .nested-path { color: #e5e7eb; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 12px; }

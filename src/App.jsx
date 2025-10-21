@@ -31,25 +31,24 @@ const containsQuery = (val, q) => {
   return s ? s.toLowerCase().includes(q.toLowerCase()) : false;
 };
 const findMatches = (node, q, path = []) => {
-  const matches = [];
+  const out = new Set();
+  const qLower = (q || "").toLowerCase();
   const walk = (n, p) => {
     if (Array.isArray(n)) {
       n.forEach((item, i) => {
-        if (containsQuery(item, q)) matches.push([...p, i].join("."));
         walk(item, p.concat(i));
       });
     } else if (n && typeof n === "object") {
       Object.entries(n).forEach(([k, v]) => {
-        if ((k || "").toLowerCase().includes(q.toLowerCase())) matches.push([...p, k].join("."));
-        if (containsQuery(v, q)) matches.push([...p, k].join("."));
+        if ((k || "").toLowerCase().includes(qLower)) out.add([...p, k].join("."));
         walk(v, p.concat(k));
       });
     } else {
-      if (containsQuery(n, q)) matches.push(p.join("."));
+      if (containsQuery(n, q)) out.add(p.join("."));
     }
   };
   walk(node, path);
-  return matches;
+  return Array.from(out);
 };
 
 function safeParseJSON(str) {
@@ -187,11 +186,31 @@ function TreeView({ data, expandedSet, query }) {
 export default function App() {
   const initialInput = `\n{\n  \"action\": \"EDIT\",\n  \"data\": \"{\\\"id\\\":\\\"833621db-4c32-445f-ab6b-hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh3aabd163bff4\\\",\\\"name\\\":\\\"IS-NONOP\\\",\\\"rows\\\":[{\\\"id\\\":\\\"6278aa36-ef82-4eab-98de-39bdf002aa9a\\\",\\\"type\\\":\\\"ROW\\\"}]}\"\n}`;
 
-  const [tabs, setTabs] = useState([
-    { id: "main", title: "Main", input: initialInput }
-  ]);
-  const [activeId, setActiveId] = useState("main");
+  const [tabs, setTabs] = useState(() => {
+    try {
+      const saved = localStorage.getItem("tabs");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length) return parsed;
+      }
+    } catch {}
+    return [{ id: "main", title: "Main", input: initialInput }];
+  });
+  const [activeId, setActiveId] = useState(() => {
+    try {
+      return localStorage.getItem("activeId") || "main";
+    } catch {
+      return "main";
+    }
+  });
   const activeTab = tabs.find((t) => t.id === activeId) ?? tabs[0];
+
+  useEffect(() => {
+    try { localStorage.setItem("tabs", JSON.stringify(tabs)); } catch {}
+  }, [tabs]);
+  useEffect(() => {
+    try { localStorage.setItem("activeId", activeId); } catch {}
+  }, [activeId]);
 
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
@@ -202,7 +221,7 @@ export default function App() {
     const t = setTimeout(() => setDebouncedQuery(query), 250);
     return () => clearTimeout(t);
   }, [query]);
-  
+
   // split pane widths
   const [ratio, setRatio] = useState(0.5); // 0..1
   const panesRef = useRef(null);
@@ -314,6 +333,26 @@ export default function App() {
     setActiveId(id);
   };
 
+  const addTab = () => {
+    const id = `tab-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const title = `Tab ${tabs.length + 1}`;
+    setTabs((prev) => [...prev, { id, title, input: "" }]);
+    setActiveId(id);
+  };
+
+  const renameActiveTab = () => {
+    const current = tabs.find((t) => t.id === activeId);
+    if (!current) return;
+    const next = window.prompt("Rename tab", current.title);
+    if (next && next.trim()) {
+      setTabs((prev) => prev.map((t) => (t.id === activeId ? { ...t, title: next.trim() } : t)));
+    }
+  };
+
+  const closeOthers = () => {
+    setTabs((prev) => prev.filter((t) => t.id === activeId || t.id === "main"));
+  };
+
   const closeTab = (id) => {
     if (id === "main") return; // prevent closing main
     setTabs((prev) => prev.filter((t) => t.id !== id));
@@ -334,6 +373,7 @@ export default function App() {
   }, [debouncedQuery, result.text]);
   const [matchIndex, setMatchIndex] = useState(0);
   const matchCount = view === "raw" ? rawMatchCount : treeMatches.length;
+  const displayCount = matchCount;
   useEffect(() => { setMatchIndex(0); }, [debouncedQuery, view]);
   const nextMatch = () => { if (!matchCount) return; setMatchIndex((i) => (i + 1) % matchCount); };
   const prevMatch = () => { if (!matchCount) return; setMatchIndex((i) => (i - 1 + matchCount) % matchCount); };
@@ -373,6 +413,9 @@ export default function App() {
             )}
           </button>
         ))}
+        <button className="tab" onClick={addTab}>+ New Tab</button>
+        <button className="btn" onClick={renameActiveTab}>Rename Tab</button>
+        <button className="btn" onClick={closeOthers}>Close Others</button>
       </div>
       {error && <div className="error">Parse error: {error}</div>}
       <div className="panes" ref={panesRef} style={{ gridTemplateColumns: `${colA} 8px ${colB}` }}>
@@ -412,7 +455,7 @@ export default function App() {
             />
             <div className="search-nav">
               <button className="nav" onClick={prevMatch} disabled={!matchCount}>◀</button>
-              <span className="count">{matchCount ? matchIndex + 1 : 0}/{matchCount}</span>
+              <span className="count">{matchCount ? matchIndex + 1 : 0}/{displayCount}</span>
               <button className="nav" onClick={nextMatch} disabled={!matchCount}>▶</button>
             </div>
             <div className="segmented">

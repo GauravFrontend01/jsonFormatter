@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 // helpers for search/highlight
 const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -124,7 +124,7 @@ function TreeNode({ k, v, depth = 0, path = [], expandedSet, query }) {
   const isObj = v && typeof v === "object";
   const isArr = Array.isArray(v);
   const pathStr = path.join(".");
-  const shouldOpen = expandedSet?.has(pathStr);
+  const shouldOpen = expandedSet?.has(pathStr) || expandedSet?.has("");
 
   useEffect(() => {
     if (shouldOpen) setOpen(true);
@@ -198,6 +198,30 @@ export default function App() {
   const [view, setView] = useState("raw"); // 'raw' | 'tree'
   const [query, setQuery] = useState("");
 
+  // split pane widths
+  const [ratio, setRatio] = useState(0.5); // 0..1
+  const panesRef = useRef(null);
+  const [dragging, setDragging] = useState(false);
+
+  const startDrag = (e) => {
+    e.preventDefault();
+    setDragging(true);
+    const onMove = (ev) => {
+      const rect = panesRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const x = ev.clientX;
+      const left = Math.max(200, Math.min(rect.width - 200, x - rect.left));
+      setRatio(left / rect.width);
+    };
+    const onUp = () => {
+      setDragging(false);
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  };
+
   const result = useMemo(() => {
     const input = activeTab?.input ?? "";
     try {
@@ -231,7 +255,6 @@ export default function App() {
     if (!query || !result.data) return new Set();
     const paths = findMatches(result.data, query);
     const set = new Set();
-    // Ensure root opens when there are matches
     if (paths.length > 0) set.add("");
     paths.forEach((p) => {
       const parts = p.split(".");
@@ -284,9 +307,11 @@ export default function App() {
     if (activeId === id) setActiveId("main");
   };
 
+  const colA = `minmax(0, ${Math.max(0.2, Math.min(0.8, ratio))}fr)`;
+  const colB = `minmax(0, ${Math.max(0.2, Math.min(0.8, 1 - ratio))}fr)`;
+
   return (
     <div className="app">
-
       {/* Tabs Bar */}
       <div className="tabs">
         {tabs.map((t) => (
@@ -305,7 +330,7 @@ export default function App() {
 
       {error && <div className="error">Parse error: {error}</div>}
 
-      <div className="panes">
+      <div className="panes" ref={panesRef} style={{ gridTemplateColumns: `${colA} 8px ${colB}` }}>
         <div className="pane">
           <div className="pane-header">Input</div>
           <textarea
@@ -329,6 +354,10 @@ export default function App() {
             </div>
           )}
         </div>
+
+        {/* divider */}
+        <div className={"divider" + (dragging ? " dragging" : "")} onMouseDown={startDrag} />
+
         <div className="pane">
           <div className="pane-header right">
             <span>Formatted Output</span>
@@ -352,7 +381,6 @@ export default function App() {
           )}
         </div>
       </div>
-
     </div>
   );
 }

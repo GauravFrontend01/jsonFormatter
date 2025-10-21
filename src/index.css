@@ -57,6 +57,7 @@ body { margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI
 .tree-number { color: #fcd34d; }
 .tree-boolean { color: #fca5a5; }
 .tree-null { color: #9ca3af; }
+.tree-key.clickable, .tree-type.clickable { cursor: pointer; text-decoration: underline; }
 
 /* Nested finder */
 .nested-list { border-top: 1px solid #1f2937; padding: 6px 10px; display: flex; flex-direction: column; gap: 6px; height: 150px; overflow: auto; }

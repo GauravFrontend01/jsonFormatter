@@ -118,7 +118,7 @@ function ValueSpan({ v, query }) {
   }
 }
 
-function TreeNode({ k, v, depth = 0, path = [], expandedSet, query }) {
+function TreeNode({ k, v, depth = 0, path = [], expandedSet, query, onFocus }) {
   const pathStr = path.join(".");
   const [open, setOpen] = useState(false);
   const isObj = v && typeof v === "object";
@@ -152,9 +152,19 @@ function TreeNode({ k, v, depth = 0, path = [], expandedSet, query }) {
           {open ? "▼" : "▶"}
         </button>
         {k !== undefined && (
-          <span className="tree-key">{markText(`${k}`, query)}:</span>
+          <span
+            className={"tree-key" + (isObj ? " clickable" : "")}
+            onClick={isObj ? () => onFocus?.(path) : undefined}
+          >
+            {markText(`${k}`, query)}:
+          </span>
         )}
-        <span className="tree-type">{isArr ? `[${count}]` : `{${count}}`}</span>
+        <span
+          className={"tree-type" + (isObj ? " clickable" : "")}
+          onClick={isObj ? () => onFocus?.(path) : undefined}
+        >
+          {isArr ? `[${count}]` : `{${count}}`}
+        </span>
       </div>
       {open && (
         <div className="tree-children">
@@ -167,6 +177,7 @@ function TreeNode({ k, v, depth = 0, path = [], expandedSet, query }) {
               path={path.concat(ck)}
               expandedSet={expandedSet}
               query={query}
+              onFocus={onFocus}
             />
           ))}
         </div>
@@ -175,10 +186,10 @@ function TreeNode({ k, v, depth = 0, path = [], expandedSet, query }) {
   );
 }
 
-function TreeView({ data, expandedSet, query }) {
+function TreeView({ data, expandedSet, query, onFocus }) {
   return (
     <div className="tree">
-      <TreeNode v={data} depth={0} path={[]} expandedSet={expandedSet} query={query} />
+      <TreeNode v={data} depth={0} path={[]} expandedSet={expandedSet} query={query} onFocus={onFocus} />
     </div>
   );
 }
@@ -221,6 +232,9 @@ export default function App() {
     const t = setTimeout(() => setDebouncedQuery(query), 250);
     return () => clearTimeout(t);
   }, [query]);
+
+  // Focused subtree navigation
+  const [focusPath, setFocusPath] = useState([]);
 
   // split pane widths
   const [ratio, setRatio] = useState(0.5); // 0..1
@@ -274,10 +288,26 @@ export default function App() {
     }));
   }, [result.parsedOriginal]);
 
+  // Derived output for focused subtree
+  const displayData = useMemo(() => {
+    const root = result.data;
+    if (!root) return null;
+    let cur = root;
+    for (const key of focusPath) {
+      if (cur == null) break;
+      cur = cur[key];
+    }
+    return cur ?? root;
+  }, [result.data, focusPath]);
+
+  const displayText = useMemo(() => {
+    return displayData ? JSON.stringify(displayData, null, 2) : "";
+  }, [displayData]);
+
   // compute expanded paths for search
   const expandedSet = useMemo(() => {
-    if (!debouncedQuery || !result.data) return new Set();
-    const paths = findMatches(result.data, debouncedQuery);
+    if (!debouncedQuery || !displayData) return new Set();
+    const paths = findMatches(displayData, debouncedQuery);
     const set = new Set();
     if (paths.length > 0) set.add("");
     paths.forEach((p) => {
@@ -287,12 +317,12 @@ export default function App() {
       }
     });
     return set;
-  }, [debouncedQuery, result.data]);
+  }, [debouncedQuery, displayData]);
 
   // highlighted raw view html
   const MAX_HL = 200;
   const highlightedRaw = useMemo(() => {
-    const text = result.text || "";
+    const text = displayText || "";
     const escaped = escapeHtml(text);
     if (!debouncedQuery) return escaped;
     const re = new RegExp(`(${escapeRegExp(debouncedQuery)})`, "gi");
@@ -304,7 +334,7 @@ export default function App() {
       }
       return m;
     });
-  }, [result.text, debouncedQuery]);
+  }, [displayText, debouncedQuery]);
 
   useEffect(() => {
     if (copied) {
@@ -319,7 +349,7 @@ export default function App() {
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(result.text);
+      await navigator.clipboard.writeText(displayText);
       setCopied(true);
     } catch {
       setCopied(false);
@@ -447,6 +477,9 @@ export default function App() {
           <div className="pane-header right">
             <span>Formatted Output</span>
             <div className="spacer" />
+            {focusPath.length > 0 && (
+              <button className="btn" onClick={() => setFocusPath((p) => p.slice(0, -1))}>Back</button>
+            )}
             <input
               className="search"
               value={query}
@@ -467,7 +500,7 @@ export default function App() {
           {view === "raw" ? (
             <pre className="output" ref={rawRef} dangerouslySetInnerHTML={{ __html: highlightedRaw }} />
           ) : (
-            <div className="output" ref={treeRef}><TreeView data={result.data} expandedSet={expandedSet} query={debouncedQuery} /></div>
+            <div className="output" ref={treeRef}><TreeView data={displayData} expandedSet={expandedSet} query={debouncedQuery} onFocus={setFocusPath} /></div>
           )}
         </div>
       </div>

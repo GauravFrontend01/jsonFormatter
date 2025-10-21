@@ -32,9 +32,13 @@ body { margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI
 .seg { padding: 4px 10px; border-radius: 999px; border: none; background: transparent; color: #cbd5e1; cursor: pointer; }
 .seg.active { background: #1f2937; color: #e5e7eb; }
 
-/* Search input */
+/* Search input and navigation */
 .search { width: 180px; max-width: 40vw; padding: 6px 8px; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #e5e7eb; outline: none; }
 .search::placeholder { color: #64748b; }
+.search-nav { display: inline-flex; align-items: center; gap: 6px; margin-left: 8px; }
+.nav { padding: 2px 6px; border: 1px solid #334155; border-radius: 6px; background: #0f172a; color: #e5e7eb; cursor: pointer; }
+.nav:disabled { opacity: 0.5; cursor: default; }
+.count { color: #9ca3af; font-size: 12px; }
 
 /* Tree */
 .tree { font-size: 13px; line-height: 1.6; }

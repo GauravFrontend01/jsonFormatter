@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, memo } from "react";
 
 // helpers for search/highlight
 const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -120,10 +120,10 @@ function ValueSpan({ v, query }) {
 }
 
 function TreeNode({ k, v, depth = 0, path = [], expandedSet, query }) {
-  const [open, setOpen] = useState(true);
+  const pathStr = path.join(".");
+  const [open, setOpen] = useState(depth === 0);
   const isObj = v && typeof v === "object";
   const isArr = Array.isArray(v);
-  const pathStr = path.join(".");
   const shouldOpen = expandedSet?.has(pathStr) || expandedSet?.has("");
 
   useEffect(() => {
@@ -132,7 +132,7 @@ function TreeNode({ k, v, depth = 0, path = [], expandedSet, query }) {
 
   if (!isObj) {
     return (
-      <div className="tree-row" style={{ paddingLeft: depth * 14 }}>
+      <div className="tree-row" data-path={pathStr} style={{ paddingLeft: depth * 14 }}>
         {k !== undefined && (
           <span className="tree-key">
             {markText(`${k}`, query)}:
@@ -148,7 +148,7 @@ function TreeNode({ k, v, depth = 0, path = [], expandedSet, query }) {
 
   return (
     <div className="tree-group" style={{ paddingLeft: depth * 14 }}>
-      <div className="tree-header">
+      <div className="tree-header" data-path={pathStr}>
         <button className="tree-toggle" onClick={() => setOpen((o) => !o)}>
           {open ? "▼" : "▶"}
         </button>
@@ -197,7 +197,12 @@ export default function App() {
   const [copied, setCopied] = useState(false);
   const [view, setView] = useState("raw"); // 'raw' | 'tree'
   const [query, setQuery] = useState("");
-
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(query), 250);
+    return () => clearTimeout(t);
+  }, [query]);
+  
   // split pane widths
   const [ratio, setRatio] = useState(0.5); // 0..1
   const panesRef = useRef(null);
@@ -252,8 +257,8 @@ export default function App() {
 
   // compute expanded paths for search
   const expandedSet = useMemo(() => {
-    if (!query || !result.data) return new Set();
-    const paths = findMatches(result.data, query);
+    if (!debouncedQuery || !result.data) return new Set();
+    const paths = findMatches(result.data, debouncedQuery);
     const set = new Set();
     if (paths.length > 0) set.add("");
     paths.forEach((p) => {
@@ -263,16 +268,24 @@ export default function App() {
       }
     });
     return set;
-  }, [query, result.data]);
+  }, [debouncedQuery, result.data]);
 
   // highlighted raw view html
+  const MAX_HL = 200;
   const highlightedRaw = useMemo(() => {
     const text = result.text || "";
     const escaped = escapeHtml(text);
-    if (!query) return escaped;
-    const re = new RegExp(`(${escapeRegExp(query)})`, "gi");
-    return escaped.replace(re, '<mark class="hl">$1</mark>');
-  }, [result.text, query]);
+    if (!debouncedQuery) return escaped;
+    const re = new RegExp(`(${escapeRegExp(debouncedQuery)})`, "gi");
+    let count = 0;
+    return escaped.replace(re, (m) => {
+      if (count < MAX_HL) {
+        count++;
+        return `<mark class=\"hl\">${m}</mark>`;
+      }
+      return m;
+    });
+  }, [result.text, debouncedQuery]);
 
   useEffect(() => {
     if (copied) {
@@ -307,6 +320,40 @@ export default function App() {
     if (activeId === id) setActiveId("main");
   };
 
+  // search navigation and refs
+  const rawRef = useRef(null);
+  const treeRef = useRef(null);
+  const treeMatches = useMemo(() => {
+    if (!debouncedQuery || !result.data) return [];
+    return findMatches(result.data, debouncedQuery);
+  }, [debouncedQuery, result.data]);
+  const rawMatchCount = useMemo(() => {
+    if (!debouncedQuery) return 0;
+    const re = new RegExp(`(${escapeRegExp(debouncedQuery)})`, "gi");
+    return (result.text || "").match(re)?.length || 0;
+  }, [debouncedQuery, result.text]);
+  const [matchIndex, setMatchIndex] = useState(0);
+  const matchCount = view === "raw" ? rawMatchCount : treeMatches.length;
+  useEffect(() => { setMatchIndex(0); }, [debouncedQuery, view]);
+  const nextMatch = () => { if (!matchCount) return; setMatchIndex((i) => (i + 1) % matchCount); };
+  const prevMatch = () => { if (!matchCount) return; setMatchIndex((i) => (i - 1 + matchCount) % matchCount); };
+  useEffect(() => {
+    if (!matchCount) return;
+    if (view === "raw") {
+      const container = rawRef.current;
+      if (!container) return;
+      const marks = container.querySelectorAll("mark.hl");
+      const el = marks[matchIndex];
+      if (el && typeof el.scrollIntoView === "function") el.scrollIntoView({ block: "center", inline: "nearest" });
+    } else {
+      const path = treeMatches[matchIndex];
+      if (!path) return;
+      const container = treeRef.current;
+      const el = container?.querySelector(`[data-path="${CSS.escape(path)}"]`);
+      if (el && typeof el.scrollIntoView === "function") el.scrollIntoView({ block: "center", inline: "nearest" });
+    }
+  }, [matchIndex, matchCount, view, highlightedRaw, treeMatches]);
+
   const colA = `minmax(0, ${Math.max(0.2, Math.min(0.8, ratio))}fr)`;
   const colB = `minmax(0, ${Math.max(0.2, Math.min(0.8, 1 - ratio))}fr)`;
 
@@ -327,9 +374,7 @@ export default function App() {
           </button>
         ))}
       </div>
-
       {error && <div className="error">Parse error: {error}</div>}
-
       <div className="panes" ref={panesRef} style={{ gridTemplateColumns: `${colA} 8px ${colB}` }}>
         <div className="pane">
           <div className="pane-header">Input</div>
@@ -340,7 +385,6 @@ export default function App() {
             spellCheck={false}
             placeholder="Paste JSON here"
           />
-
           {/* Nested stringified JSON finder */}
           {stringifiedList.length > 0 && (
             <div className="nested-list">
@@ -354,10 +398,8 @@ export default function App() {
             </div>
           )}
         </div>
-
         {/* divider */}
         <div className={"divider" + (dragging ? " dragging" : "")} onMouseDown={startDrag} />
-
         <div className="pane">
           <div className="pane-header right">
             <span>Formatted Output</span>
@@ -368,6 +410,11 @@ export default function App() {
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search..."
             />
+            <div className="search-nav">
+              <button className="nav" onClick={prevMatch} disabled={!matchCount}>◀</button>
+              <span className="count">{matchCount ? matchIndex + 1 : 0}/{matchCount}</span>
+              <button className="nav" onClick={nextMatch} disabled={!matchCount}>▶</button>
+            </div>
             <div className="segmented">
               <button className={view === "raw" ? "seg active" : "seg"} onClick={() => setView("raw")}>Raw</button>
               <button className={view === "tree" ? "seg active" : "seg"} onClick={() => setView("tree")}>Tree</button>
@@ -375,9 +422,9 @@ export default function App() {
             <button className="btn" onClick={handleCopy}>{copied ? "Copied" : "Copy"}</button>
           </div>
           {view === "raw" ? (
-            <pre className="output" dangerouslySetInnerHTML={{ __html: highlightedRaw }} />
+            <pre className="output" ref={rawRef} dangerouslySetInnerHTML={{ __html: highlightedRaw }} />
           ) : (
-            <div className="output"><TreeView data={result.data} expandedSet={expandedSet} query={query} /></div>
+            <div className="output" ref={treeRef}><TreeView data={result.data} expandedSet={expandedSet} query={debouncedQuery} /></div>
           )}
         </div>
       </div>

@@ -120,10 +120,10 @@ function ValueSpan({ v, query }) {
 
 function TreeNode({ k, v, depth = 0, path = [], expandedSet, query }) {
   const pathStr = path.join(".");
-  const [open, setOpen] = useState(depth === 0);
+  const [open, setOpen] = useState(false);
   const isObj = v && typeof v === "object";
   const isArr = Array.isArray(v);
-  const shouldOpen = expandedSet?.has(pathStr) || expandedSet?.has("");
+  const shouldOpen = expandedSet?.has(pathStr);
 
   useEffect(() => {
     if (shouldOpen) setOpen(true);
